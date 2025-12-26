@@ -13,7 +13,7 @@ print(f"Total IDs to process: {len(ids)}")
 print(ids)
 
 for movie_id in ids:
-    url = f"http://ec2-54-93-108-37.eu-central-1.compute.amazonaws.com:6091/api/movies/{movie_id}/page"
+    url = f"http://localhost:5091/api/movies/{movie_id}/page"
     response = requests.get(url)
     data = response.json()
     print(data)
