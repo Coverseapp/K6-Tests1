@@ -27,14 +27,14 @@ const addMovieDuration = new Trend('add_movie_duration');
 // Config from env vars
 const START_ID = parseInt(__ENV.START_ID) || 1;
 const END_ID = parseInt(__ENV.END_ID) || 10000;
-const RANDOM_MODE = __ENV.RANDOM_MODE === 'true'; // true = random IDs, false = sequential
+const RANDOM_MODE = __ENV.RANDOM_MODE === 'false'; // true = random IDs, false = sequential
 
 export const options = {
     scenarios: {
         seed_movies: {
             executor: 'per-vu-iterations',
-            vus: 20,
-            iterations: Math.ceil((END_ID - START_ID) / 10),
+            vus: 1,
+            iterations: END_ID - START_ID,
             maxDuration: '60m',
         },
     },
@@ -75,7 +75,8 @@ export default function () {
         moviesNotFound.add(1);
     } else {
         moviesFailed.add(1);
-        console.log(`❌ Movie ${movieId} failed with status ${res.status}`);
+        console.log(` Movie ${movieId} failed with status ${res.status}`);
+        console.log(` Response: ${res.body}`);
     }
     
     // Small delay to not overwhelm the API
