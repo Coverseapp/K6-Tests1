@@ -10,19 +10,24 @@
 
 import { sleep } from 'k6';
 import { Counter, Trend } from 'k6/metrics';
+import http from 'k6/http';
 import { getPersonPage } from '../lib/requests.js';
 import { seedThresholds, randomInt } from '../lib/config.js';
-
+import { NotFoundPersonIds } from '../lib/data_manager.js';
 // Custom metrics
 const personsAdded = new Counter('persons_added');
 const personsNotFound = new Counter('persons_not_found');
 const personsFailed = new Counter('persons_failed');
 const addPersonDuration = new Trend('add_person_duration');
 
-// Config
+
 const START_ID = parseInt(__ENV.START_ID) || 1;
-const END_ID = parseInt(__ENV.END_ID) || 50000;
+const END_ID = parseInt(__ENV.END_ID) || 5000;
 const RANDOM_MODE = __ENV.RANDOM_MODE === 'true';
+
+http.setResponseCallback(http.expectedStatuses({ min: 200, max: 399 }, 404));
+
+const notFoundedIdsSet = new Set(NotFoundPersonIds);
 
 export const options = {
     scenarios: {
@@ -40,6 +45,7 @@ export function setup() {
     console.log(`👤 Person Seed Test Starting`);
     console.log(`   ID Range: ${START_ID} - ${END_ID}`);
     console.log(`   Mode: ${RANDOM_MODE ? 'Random' : 'Sequential'}`);
+    console.log(`   Skipping ${NotFoundPersonIds.length} already known not-found IDs`);
     return { startTime: new Date().toISOString() };
 }
 
@@ -49,14 +55,15 @@ export default function () {
     
     let personId;
     if (RANDOM_MODE) {
-        personId = randomInt(START_ID, END_ID);
+        personId = randomInt(START_ID, END_ID, NotFoundPersonIds);
     } else {
-        personId = START_ID + (vuId - 1) + (iterNum * 10);
+        personId = START_ID + vuId - 1 + (iterNum * 10);
+        while (notFoundedIdsSet.has(personId)) personId += 10;
         if (personId > END_ID) return;
     }
     
     const startTime = Date.now();
-    const res = getPersonPage(personId);
+    const res = getPersonPage(personId, null, true, true);
     const duration = Date.now() - startTime;
     
     addPersonDuration.add(duration);
@@ -65,6 +72,7 @@ export default function () {
         personsAdded.add(1);
     } else if (res.status === 404) {
         personsNotFound.add(1);
+        console.log(`NOTFOUND_PERSON_ID:${personId}`);
     } else {
         personsFailed.add(1);
     }
